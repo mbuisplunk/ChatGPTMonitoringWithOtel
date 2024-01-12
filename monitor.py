@@ -3,7 +3,17 @@ import json
 from functools import wraps
 from opentelemetry import trace
 
+from opentelemetry import metrics
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+
 counters = {'completion_count': 0, 'token_count': 0, 'prompt_tokens': 0, 'completion_tokens': 0}
+
+#Metrics
+metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter())]))
+metrics.get_meter_provider()
+fib_counter = metrics.get_meter("opentelemetry.instrumentation.custom").create_counter("fibonacci.invocations", unit="1", description="Measures the number of times the fibonacci method is invoked.")
 
 # Define the formula
 def calculate_cost(response):
@@ -37,6 +47,8 @@ def count_completion_requests_and_tokens(func):
         completion_tokens = response.usage.completion_tokens
         cost = calculate_cost(response)
         strResponse = json.dumps(response)
+
+        fib_counter.add(100, {"fibonacci.valid.n": "true"})
         
         # Set OpenTelemetry attributes
         span = trace.get_current_span()
@@ -48,6 +60,7 @@ def count_completion_requests_and_tokens(func):
             span.set_attribute("model", response.model)
             span.set_attribute("cost", cost)
             span.set_attribute("response", strResponse)
+            fib_counter.add(100, {"fibonacci.valid.n": "true"})
         return response
     return wrapper
 

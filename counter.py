@@ -6,27 +6,25 @@ import urllib
 import os
 
 from opentelemetry import trace
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.resources import SERVICE_NAME, DEPLOYMENT_ENVIRONMENT, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
-
 # Service name is required for most backends
 resource = Resource(attributes={
-    SERVICE_NAME: "your-service-name"
+    SERVICE_NAME: "chatgptbot",
+    DEPLOYMENT_ENVIRONMENT: "chatgptdev"
 })
 
+#Traces
 provider = TracerProvider(resource=resource)
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT'),
-        headers="Authorization=Bearer%20"+os.getenv('OTEL_EXPORTER_OTLP_AUTH_HEADER')))
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint=os.getenv('OTEL_EXPORTER_OTLP_ENDPOINT')))
 
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 tracer = trace.get_tracer(__name__)
 RequestsInstrumentor().instrument()
-
-
 
 # Initialize Flask app and instrument it
 app = Flask(__name__)
@@ -39,7 +37,7 @@ openai.api_key = os.getenv('OPEN_AI_KEY')
 def completion():
     response = openai.Completion.create(
         model="text-davinci-003",
-        prompt="Why is Elastic an amazing observability tool?",
+        prompt="Why is Splunk an amazing observability tool?",
         max_tokens=20,
         temperature=0
     )
@@ -47,5 +45,5 @@ def completion():
     return response.choices[0].text.strip()
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)
 
